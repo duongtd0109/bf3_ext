@@ -3,7 +3,7 @@
 
 1. FORMATTING
 
-    - \033[<color>m   -> set text/background color
+    - \033[<**color**>m   -> set text/background color
     - \033[39m        -> reset text color
     - \033[49m        -> reset background color
 
