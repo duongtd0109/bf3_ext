@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <gtest/gtest.h>
-#include "../Server/include/server.h"
+#include "../include/server.h"
 
 using namespace std;
 
