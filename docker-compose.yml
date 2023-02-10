@@ -1,0 +1,40 @@
+version: '3.1'
+
+services:
+  server:
+    image: bf3_server:latest
+    build: ./Server
+    network_mode: "host"
+    volumes:
+      - $PWD:$PWD
+    restart: on-failure
+    ports:
+       # listen port in container
+      - "8089:8089"
+    tty: true # run container on background
+
+  client:
+    image: bf3_client:latest
+    build: ./Client
+
+  BF3_database:
+    image: mysql:8.0
+    container_name: MySQL_OFFICAL
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    tty: true
+    environment:
+      - TZ=Asia/Bangkok #GTM +7
+      - MYSQL_ROOT_PASSWORD=hihi
+    volumes:
+      - $PWD/database.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - 41602:3306 #Query data on 192.168.122.238 port 41602
+
+  adminer:
+    image: adminer
+    container_name: Adminer_OFFICAL
+    restart: always
+    tty: true
+    ports:
+      - 8081:8080 #Check data on 192.168.122.238:8081, Database: BF3_database, User: root, Pass: hihi

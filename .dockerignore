@@ -1,0 +1,7 @@
+# git pagekage
+.git
+.gitignore
+.gitlab-ci.yml
+
+# dockerfile
+**/Dockerfile

@@ -1,0 +1,123 @@
+variables:
+  SERVER_NAME: bf3_server
+  CLIENT_NAME: bf3_client
+  IMAGE_TAG: latest
+
+stages:
+  - build
+  - test
+  - pack
+  - deploy
+
+Build Server:
+  stage: build
+  script:
+    - cd server/
+    - ./build.sh
+  tags:
+    - bf3_runner
+  only:
+    - branches
+    - merge_requests
+
+Build Client:
+  stage: build
+  script:
+    - cd client/
+    - ./build.sh 
+  tags:
+    - bf3_runner
+  only:
+    - branches
+    - merge_requests
+
+Source check:
+  stage: test
+  script:
+    - ./clean_check.sh
+  tags:
+    - bf3_runner
+  only:
+    - branches
+    - merge_requests
+
+Shell check:
+  stage: test
+  script:
+    - ./shell_check.sh
+  tags:
+    - bf3_runner
+  only:
+    - branches
+    - merge_requests
+
+Test Client:
+  stage: test
+  script:
+    - cd test/
+    - ./build.sh
+    - ./build/test_client
+  tags:
+    - bf3_runner
+  only:
+    - branches
+    - merge_requests
+
+Test Server:
+  stage: test
+  script:
+    - cd test/
+    - ./build.sh
+    - ./build/test_server
+  tags:
+    - bf3_runner
+  only:
+    - branches
+    - merge_requests
+
+Test Dockerfile:
+  stage: test
+  script:
+    - docker run --rm -i hadolint/hadolint hadolint --ignore DL3008 -  < ./server/Dockerfile
+    - docker run --rm -i hadolint/hadolint hadolint --ignore DL3008 -  < ./client/Dockerfile
+  tags:
+    - bf3_runner
+  only:
+    - branches
+    - merge_requests
+
+Build Image:
+  stage: pack
+  script:
+    - docker ps -aqf ancestor=$SERVER_NAME:$IMAGE_TAG | xargs -I {} docker rm -f {} 
+    - docker ps -aqf ancestor=$CLIENT_NAME:$IMAGE_TAG | xargs -I {} docker rm -f {} 
+    - docker rmi $CLIENT_NAME:$IMAGE_TAG $SERVER_NAME:$IMAGE_TAG && docker-compose build  || docker-compose build
+  tags:
+    - bf3_runner
+  except: 
+    - branches
+
+Push Image:
+  stage: pack
+  script:
+    - docker tag $SERVER_NAME:$IMAGE_TAG 10.105.68.53:5000/$SERVER_NAME:$IMAGE_TAG
+    - docker tag $CLIENT_NAME:$IMAGE_TAG 10.105.68.53:5000/$CLIENT_NAME:$IMAGE_TAG
+    - docker login 10.105.68.53:5000 -u admin -p registry
+    - docker push 10.105.68.53:5000/$SERVER_NAME:$IMAGE_TAG
+    - docker push 10.105.68.53:5000/$CLIENT_NAME:$IMAGE_TAG
+  tags:
+    - bf3_runner
+  except:
+    - branches
+
+Deploy Kubenetes:
+  stage: deploy
+  script: 
+    - kubectl -n bf3-ext apply -f bf3-deployment.yaml
+    - kubectl -n bf3-ext set image deployment bf3-server-kube bf3-server-kube=10.105.68.53:5000/bf3_server:latest
+    - kubectl -n bf3-ext rollout restart deployment/bf3-server-kube
+    - kubectl -n bf3-ext delete rs --all 
+  tags:
+    - bf3_runner_kube
+  except:
+    - branches
